@@ -16,8 +16,9 @@ Release packages include Qt; you do not need the development SDK to run them.
   to install it under your home directory and add the Applications icon. Packages
   target Ubuntu 24.04 or a compatible glibc desktop, with native Wayland plugins.
 - **Windows x86_64:** extract the full `.zip`, then run `bin/usage-float.exe`.
-- **macOS:** download the Apple Silicon (`arm64`) or Intel (`x86_64`) `.dmg` and
-  drag **Usage Float.app** into Applications.
+- **macOS:** download the Apple Silicon (`arm64`) `.dmg` and drag
+  **Usage Float.app** into Applications. **v0.2.0-rc.2 is the last release with
+  an Intel (`x86_64`) macOS package**; subsequent releases support Apple Silicon only.
 
 These builds are unsigned/not notarized. SHA-256 checksums accompany the downloads.
 You still need your existing Claude Code and/or Codex CLI login.
@@ -70,8 +71,8 @@ ctest --test-dir build -C Release --output-on-failure
 Qt's deployment script is included in the CMake install step. macOS/Windows
 source paths are implemented, but builds and desktop integration have only been
 verified locally on Ubuntu/Wayland. GitHub Actions builds, tests, deploys Qt, and
-smoke-tests the installed app on Linux, Windows, Apple Silicon macOS, and Intel
-macOS. See the linked workflow for the current result. Signing and notarization
+smoke-tests the installed app on Linux x86_64, Windows x86_64, and Apple Silicon
+macOS. Intel macOS builds ended with v0.2.0-rc.2. See the linked workflow for the current result. Signing and notarization
 are not included in this initial version.
 
 ### This laptop
@@ -259,7 +260,7 @@ changes only; it does not keep a continuous animation running while idle.
 
 ## Releases
 
-Pushes and pull requests build all four desktop packages and upload archives as
+Pushes and pull requests build all three desktop packages and upload archives as
 workflow artifacts. A matching `vX.Y.Z` tag additionally publishes a GitHub Release
 with `.tar.gz`, `.zip`, `.dmg`, and SHA-256 files after every matrix job passes.
 The workflow rejects tags that do not match the project version plus the optional

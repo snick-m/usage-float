@@ -32,11 +32,6 @@ jobs:
             qt-arch: clang_64
             package: macos-arm64
             archives: qtbase qtdeclarative qtsvg qttools
-          - os: macos-15-intel
-            qt-host: mac
-            qt-arch: clang_64
-            package: macos-x86_64
-            archives: qtbase qtdeclarative qtsvg qttools
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:

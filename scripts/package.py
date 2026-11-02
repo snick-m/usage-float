@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--prefix', type=Path, required=True)
 parser.add_argument('--output', type=Path, default=Path('release-assets'))
 parser.add_argument('--version', required=True)
-parser.add_argument('--platform', required=True, choices=['linux-x86_64', 'windows-x86_64', 'macos-arm64', 'macos-x86_64'])
+parser.add_argument('--platform', required=True, choices=['linux-x86_64', 'windows-x86_64', 'macos-arm64'])
 args = parser.parse_args()
 if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]*', args.version):
     parser.error('Invalid version identifier')
