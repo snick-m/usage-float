@@ -3,3 +3,5 @@
 /.qt/
 *.user
 aqtinstall.log
+/release-assets/
+/qt-sdk/

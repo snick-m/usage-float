@@ -30,6 +30,7 @@ Rectangle {
             ColumnLayout {
                 spacing: 2; Layout.fillWidth: true
                 Text { text: card.providerName; color: "#edf1f7"; font.pixelSize: 12; font.weight: Font.DemiBold }
+                Text { text: card.state.model; color: card.accent; font.pixelSize: 10; Layout.fillWidth: true; elide: Text.ElideRight }
                 Text {
                     text: card.state.plan ? card.state.plan.charAt(0).toUpperCase() + card.state.plan.slice(1) + " plan" : "Subscription allowance"
                     color: "#8090a8"; font.pixelSize: 10

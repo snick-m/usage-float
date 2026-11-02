@@ -89,13 +89,15 @@ Window {
                         visible: !controller.wide
                         Layout.fillWidth: true
                         spacing: 1
-                        Text {
-                            text: capsuleProvider.modelData.name
-                            color: capsuleProvider.modelData.accent
-                            font.pixelSize: 10; font.weight: Font.Medium
-                        }
                         RowLayout {
                             Layout.fillWidth: true; spacing: 8
+                            ColumnLayout {
+                                spacing: 0
+                                Text { text: capsuleProvider.modelData.name; color: capsuleProvider.modelData.accent; font.pixelSize: 10; font.weight: Font.Medium }
+                                Text { text: capsuleProvider.modelData.state.model; color: root.muted; font.pixelSize: 8; Layout.maximumWidth: 82; elide: Text.ElideRight }
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true; spacing: 0
                             Repeater {
                                 model: capsuleProvider.rows.slice(0, 2)
                                 Row {
@@ -107,16 +109,17 @@ Window {
                             }
                             Text { visible: capsuleProvider.rows.length === 0; text: capsuleProvider.modelData.state.busy ? "Syncing…" : "Unavailable"; color: root.muted; font.pixelSize: 10 }
                             Text { visible: capsuleProvider.modelData.state.stale; text: "!"; color: "#e6bd8f"; font.pixelSize: 10 }
+                            }
                         }
                     }
                     RowLayout {
                         visible: controller.wide
                         Layout.fillWidth: true
                         spacing: 10
-                        Text {
-                            text: capsuleProvider.modelData.name
-                            color: capsuleProvider.modelData.accent
-                            font.pixelSize: 11; font.weight: Font.Medium
+                        ColumnLayout {
+                            spacing: 1
+                            Text { text: capsuleProvider.modelData.name; color: capsuleProvider.modelData.accent; font.pixelSize: 11; font.weight: Font.Medium }
+                            Text { text: capsuleProvider.modelData.state.model; color: root.muted; font.pixelSize: 8; Layout.maximumWidth: 78; elide: Text.ElideRight }
                         }
                         Repeater {
                             model: capsuleProvider.rows.slice(0, 2)
@@ -148,6 +151,7 @@ Window {
                         visible: providerHover.hovered
                         text: {
                             let lines = [capsuleProvider.modelData.name]
+                            lines.push("Default model: " + capsuleProvider.modelData.state.model)
                             for (let row of capsuleProvider.rows.slice(0, 2))
                                 lines.push(row.label + ": " + Math.round(row.displayPercent) + (controller.showRemaining ? "% remaining" : "% used") + " · resets in " + row.countdown)
                             if (capsuleProvider.modelData.state.stale) lines.push("Stale reading — open details")

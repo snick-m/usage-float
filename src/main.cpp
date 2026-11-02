@@ -8,7 +8,6 @@
 #include <QLocalSocket>
 #include <QLockFile>
 #include <QMenu>
-#include <QPainter>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
@@ -19,13 +18,10 @@
 #include <cstdio>
 
 static QIcon appIcon() {
-    QPixmap image(64, 64); image.fill(Qt::transparent);
-    QPainter painter(&image); painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(Qt::NoPen); painter.setBrush(QColor("#151b27")); painter.drawRoundedRect(0, 0, 64, 64, 16, 16);
-    painter.setBrush(QColor("#d6ac89")); painter.drawRoundedRect(14, 19, 8, 30, 4, 4);
-    painter.setBrush(QColor("#a7dcca")); painter.drawRoundedRect(28, 11, 8, 38, 4, 4);
-    painter.setBrush(QColor("#90a6de")); painter.drawRoundedRect(42, 27, 8, 22, 4, 4);
-    return QIcon(image);
+    QIcon icon;
+    for (int size : {16, 24, 32, 48, 64, 128, 256, 512})
+        icon.addFile(QString(":/icons/%1.png").arg(size), QSize(size, size));
+    return icon;
 }
 
 int main(int argc, char **argv) {
@@ -40,7 +36,7 @@ int main(int argc, char **argv) {
     app.setApplicationName("UsageFloat");
     app.setApplicationDisplayName("Usage Float");
     app.setApplicationVersion("0.1.0");
-    app.setDesktopFileName("io.usagefloat.desktop");
+    app.setDesktopFileName("io.usagefloat.UsageFloat");
     app.setWindowIcon(appIcon());
     QQuickStyle::setStyle("Basic");
     QCommandLineParser parser;

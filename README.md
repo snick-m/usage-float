@@ -5,9 +5,27 @@ C++17 and Qt 6 Quick/QML. No browser engine, web server, API key, or separate
 widget sign-in. Native Wayland is supported; your compositor controls window
 placement and Always on Top.
 
+**[Download releases](https://github.com/snick-m/usage-float/releases)** ·
+[Build status](https://github.com/snick-m/usage-float/actions/workflows/build.yml)
+
+## Download and install
+
+Release packages include Qt; you do not need the development SDK to run them.
+
+- **Linux x86_64:** extract the `.tar.gz`, run `./UsageFloat`, or run `./install.sh`
+  to install it under your home directory and add the Applications icon. Packages
+  target Ubuntu 24.04 or a compatible glibc desktop, with native Wayland plugins.
+- **Windows x86_64:** extract the full `.zip`, then run `bin/usage-float.exe`.
+- **macOS:** download the Apple Silicon (`arm64`) or Intel (`x86_64`) `.dmg` and
+  drag **Usage Float.app** into Applications.
+
+These builds are unsigned/not notarized. SHA-256 checksums accompany the downloads.
+You still need your existing Claude Code and/or Codex CLI login.
+
 ## What it does
 
 - Session and weekly usage, countdowns, and additional model-specific limits.
+- Configured default model underneath each provider name (`Auto` when unset).
 - Compact two-provider view, expanded detail cards, and borderless capsule by default.
 - Independent asynchronous refreshes, timeouts, Claude cooldown/backoff, and
   clearly marked stale readings when a provider fails.
@@ -49,9 +67,10 @@ ctest --test-dir build -C Release --output-on-failure
 
 Qt's deployment script is included in the CMake install step. macOS/Windows
 source paths are implemented, but builds and desktop integration have only been
-verified on Ubuntu/Wayland so far. A GitHub Actions build/test/package matrix is
-included for all three desktop platforms, but has not been run remotely yet.
-Signing and notarization are not included in this initial version.
+verified locally on Ubuntu/Wayland. GitHub Actions builds, tests, deploys Qt, and
+smoke-tests the installed app on Linux, Windows, Apple Silicon macOS, and Intel
+macOS. See the linked workflow for the current result. Signing and notarization
+are not included in this initial version.
 
 ### This laptop
 
@@ -151,3 +170,24 @@ To capture a deterministic UI sample:
 
 The initial design deliberately uses a static background and animates meter
 changes only; it does not keep a continuous animation running while idle.
+
+## Releases
+
+Pushes and pull requests build all four desktop packages and upload archives as
+workflow artifacts. A matching `vX.Y.Z` tag additionally publishes a GitHub Release
+with `.tar.gz`, `.zip`, `.dmg`, and SHA-256 files after every matrix job passes.
+The workflow rejects tags that do not match the version in `CMakeLists.txt`.
+
+To cut a release, update the project version and `packaging/RELEASE_NOTES.md`,
+commit, push, and verify the branch workflow. Then tag that exact commit:
+
+```sh
+git tag -a v0.1.0 -m "Usage Float v0.1.0"
+git push origin v0.1.0
+```
+
+`scripts/package.py` creates the same download archives locally from a CMake
+install tree. `scripts/smoke-installed.py` verifies startup with Qt SDK paths
+removed from the runtime environment. Platform icons are generated from
+`packaging/io.usagefloat.UsageFloat.svg`; PNG, ICO, and ICNS assets are checked in
+so builders do not need image conversion tools.

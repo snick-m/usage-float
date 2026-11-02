@@ -18,7 +18,17 @@
 namespace {
 QVariantMap initial(const QString &source) {
     return {{"rows", QVariantList{}}, {"status", "loading"}, {"message", "Reading your existing login…"},
-            {"plan", ""}, {"source", source}, {"updated", qint64(0)}, {"busy", false}};
+            {"plan", ""}, {"model", "Auto"}, {"source", source}, {"updated", qint64(0)}, {"busy", false}};
+}
+QString claudeModel() {
+    QString model = qEnvironmentVariable("CLAUDE_MODEL");
+    if (model.isEmpty()) {
+        const QString folder = qEnvironmentVariable("CLAUDE_CONFIG_DIR", QDir::homePath() + "/.claude");
+        QFile file(folder + "/settings.json");
+        if (file.open(QIODevice::ReadOnly))
+            model = QJsonDocument::fromJson(file.read(1024 * 1024)).object().value("model").toString();
+    }
+    return model.trimmed().isEmpty() ? QString("Auto") : model.trimmed().left(128);
 }
 QString executable(const QString &name) {
     QStringList paths = QProcessEnvironment::systemEnvironment().value("PATH").split(QDir::listSeparator());
@@ -36,6 +46,7 @@ QString quotedDesktop(const QString &value) {
 Controller::Controller(bool demo, QObject *parent) : QObject(parent), m_demo(demo) {
     m_claude = initial("Claude Code login");
     m_codex = initial("Codex app-server");
+    if (!demo) m_claude.insert("model", claudeModel());
     m_poll.setInterval(intervalMinutes() * 60000);
     connect(&m_poll, &QTimer::timeout, this, &Controller::refresh);
     m_poll.start();
@@ -73,6 +84,11 @@ Controller::~Controller() {
     if (m_codexProcess.state() != QProcess::NotRunning) {
         m_codexProcess.kill();
         m_codexProcess.waitForFinished(1000);
+    }
+    for (auto *process : findChildren<QProcess *>()) {
+        if (process->state() == QProcess::NotRunning) continue;
+        process->kill();
+        process->waitForFinished(1000);
     }
 }
 
@@ -134,12 +150,12 @@ void Controller::setAutoStart(bool enabled) {
     bool ok = false;
 #ifdef Q_OS_LINUX
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::ConfigLocation) + "/autostart";
-    const QString path = dir + "/io.usagefloat.desktop.desktop";
+    const QString path = dir + "/io.usagefloat.UsageFloat.desktop";
     if (enabled) {
         QDir().mkpath(dir);
         QSaveFile file(path);
         const auto data = ("[Desktop Entry]\nType=Application\nName=Usage Float\nExec=" + quotedDesktop(program)
-            + "\nIcon=io.usagefloat.desktop\nTerminal=false\nX-GNOME-Autostart-enabled=true\n").toUtf8();
+            + "\nIcon=io.usagefloat.UsageFloat\nTerminal=false\nX-GNOME-Autostart-enabled=true\n").toUtf8();
         ok = file.open(QIODevice::WriteOnly) && file.write(data) == data.size() && file.commit();
     } else ok = !QFile::exists(path) || QFile::remove(path);
 #elif defined(Q_OS_WIN)
@@ -149,12 +165,12 @@ void Controller::setAutoStart(bool enabled) {
     run.sync(); ok = run.status() == QSettings::NoError;
 #elif defined(Q_OS_MACOS)
     const QString dir = QDir::homePath() + "/Library/LaunchAgents";
-    const QString path = dir + "/io.usagefloat.desktop.plist";
+    const QString path = dir + "/io.usagefloat.UsageFloat.plist";
     if (enabled) {
         QDir().mkpath(dir);
         QString escaped = program.toHtmlEscaped();
         const auto data = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?><plist version=\"1.0\"><dict>"
-            "<key>Label</key><string>io.usagefloat.desktop</string><key>ProgramArguments</key><array><string>" + escaped
+            "<key>Label</key><string>io.usagefloat.UsageFloat</string><key>ProgramArguments</key><array><string>" + escaped
             + "</string></array><key>RunAtLoad</key><true/></dict></plist>").toUtf8();
         QSaveFile file(path);
         ok = file.open(QIODevice::WriteOnly) && file.write(data) == data.size() && file.commit();
@@ -204,6 +220,8 @@ void Controller::copyLoginCommand(const QString &provider) {
 
 void Controller::refresh() {
     if (m_demo) {
+        m_claude.insert("model", "Sonnet");
+        m_codex.insert("model", "gpt-6.1-sol");
         const qint64 now = QDateTime::currentSecsSinceEpoch();
         success("claude", {QVariantMap{{"label", "Session"}, {"percent", 32.0}, {"reset", now + 9480}},
                            QVariantMap{{"label", "Weekly"}, {"percent", 58.0}, {"reset", now + 260000}}}, "Max");
@@ -237,6 +255,7 @@ void Controller::failure(const QString &provider, const QString &message) {
 }
 
 void Controller::fetchClaude() {
+    m_claude.insert("model", claudeModel());
     m_claudeBusy = true; m_claude.insert("busy", true); emit statesChanged();
     const QString dir = qEnvironmentVariable("CLAUDE_CONFIG_DIR", QDir::homePath() + "/.claude");
     QFile file(dir + "/.credentials.json");
@@ -331,14 +350,23 @@ void Controller::readCodex() {
     while (m_codexBusy && m_codexProcess.canReadLine()) {
         const auto message = QJsonDocument::fromJson(m_codexProcess.readLine()).object();
         const int id = message.value("id").toInt(-1);
-        if (id != 1 && id != 2) continue;
+        if (id != 1 && id != 2 && id != 3) continue;
+        if (id == 3) {
+            // Model metadata is optional; failure must not block quota reads.
+            const auto config = message.value("result").toObject().value("config").toObject();
+            const QString model = config.value("model").toString().trimmed();
+            m_codex.insert("model", model.isEmpty() ? "Auto" : model.left(128));
+            emit statesChanged();
+            sendRpc({{"id", 2}, {"method", "account/rateLimits/read"}});
+            continue;
+        }
         if (message.contains("error")) {
             failure("codex", "Codex could not read subscription limits. Check codex login and your connection.");
             m_codexProcess.kill(); return;
         }
         if (id == 1) {
             sendRpc({{"method", "initialized"}, {"params", QJsonObject{}}});
-            sendRpc({{"id", 2}, {"method", "account/rateLimits/read"}});
+            sendRpc({{"id", 3}, {"method", "config/read"}, {"params", QJsonObject{{"includeLayers", false}}}});
         } else {
             const auto result = message.value("result").toObject();
             success("codex", Usage::codexRows(result), result.value("rateLimits").toObject().value("planType").toString());

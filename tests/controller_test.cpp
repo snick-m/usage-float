@@ -17,6 +17,11 @@ static int fakeCodex() {
         if (id < 0) continue;
         QJsonObject reply{{"id", id}};
         if (id == 1) reply.insert("result", QJsonObject{});
+        else if (id == 3) {
+            if (qEnvironmentVariable("USAGE_FLOAT_TEST_CASE") == "config-error")
+                reply.insert("error", QJsonObject{{"message", "Config metadata unavailable"}});
+            else reply.insert("result", QJsonObject{{"config", QJsonObject{{"model", "test-model"}}}});
+        }
         else if (qEnvironmentVariable("USAGE_FLOAT_TEST_CASE") == "rpc-error")
             reply.insert("error", QJsonObject{{"code", -32000}, {"message", "SECRET_MUST_NOT_REACH_UI"}});
         else reply.insert("result", QJsonObject{{"rateLimits", QJsonObject{
@@ -33,6 +38,12 @@ private slots:
     void initTestCase() {
         QVERIFY(data.isValid());
         qputenv("CLAUDE_CONFIG_DIR", data.path().toUtf8());
+        // An explicit empty credential document also prevents macOS from
+        // falling back to the real user Keychain while tests are running.
+        QFile credentials(data.path() + "/.credentials.json");
+        QVERIFY(credentials.open(QIODevice::WriteOnly));
+        QCOMPARE(credentials.write("{}"), qint64(2));
+        credentials.close();
         QCoreApplication::setOrganizationName("UsageFloatTests");
         QCoreApplication::setApplicationName("Isolated");
         QSettings::setDefaultFormat(QSettings::IniFormat);
@@ -48,6 +59,7 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(controller.codex().value("status").toString(), "ready", 4000);
         QCOMPARE(controller.claude().value("status").toString(), "error");
         QCOMPARE(controller.codex().value("rows").toList().first().toMap().value("percent").toInt(), 19);
+        QCOMPARE(controller.codex().value("model").toString(), "test-model");
         QVERIFY(!controller.codex().value("stale").toBool());
         // Let the successful child termination be reaped before the next read.
         QTest::qWait(50);
@@ -65,6 +77,14 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(controller.codex().value("status").toString(), "error", 3000);
         QVERIFY(!controller.codex().value("hasData").toBool());
         QVERIFY(!controller.refreshing());
+    }
+    void modelMetadataFailureDoesNotBlockUsage() {
+        qputenv("USAGE_FLOAT_TEST_CASE", "config-error");
+        Controller controller(false);
+        controller.setCodexPath(QCoreApplication::applicationFilePath());
+        QTRY_COMPARE_WITH_TIMEOUT(controller.codex().value("status").toString(), "ready", 4000);
+        QCOMPARE(controller.codex().value("model").toString(), "Auto");
+        QCOMPARE(controller.codex().value("rows").toList().first().toMap().value("percent").toInt(), 19);
     }
     void demoDoesNotReadAccounts() {
         Controller controller(true);
