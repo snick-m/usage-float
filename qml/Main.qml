@@ -6,12 +6,11 @@ Window {
     id: root
     title: "Usage Float"
     visible: true
-    width: controller.compact && controller.wide ? 536 : 328
-    height: controller.compact ? 44 : Math.min(860, mainContent.implicitHeight + 32)
-    minimumWidth: controller.compact ? (controller.wide ? 536 : 328) : 280
+    width: compactMode ? capsuleWidth : 328
+    height: targetHeight
+    minimumWidth: 280
     maximumWidth: 560
-    minimumHeight: controller.compact ? 44 : 280
-    maximumHeight: height
+    minimumHeight: 44
     color: "transparent"
     flags: Qt.Window | Qt.WindowCloseButtonHint | Qt.WindowMinimizeButtonHint
         | (controller.borderless ? Qt.FramelessWindowHint : 0)
@@ -20,8 +19,18 @@ Window {
     property bool trayAvailable: false
     readonly property bool compactMode: controller.compact
     readonly property int capsuleWidth: controller.wide ? 536 : 328
-    onCompactModeChanged: width = compactMode ? capsuleWidth : 328
-    onCapsuleWidthChanged: if (compactMode) width = capsuleWidth
+    readonly property int availableHeight: Math.max(44, Screen.desktopAvailableHeight - 80)
+    readonly property int targetHeight: compactMode ? 44 : Math.min(availableHeight, Math.ceil(mainContent.implicitHeight + 32))
+    function fitContent() {
+        height = targetHeight
+        if (compactMode) width = capsuleWidth
+    }
+    onCompactModeChanged: {
+        width = compactMode ? capsuleWidth : 328
+        Qt.callLater(fitContent)
+    }
+    onCapsuleWidthChanged: if (compactMode) Qt.callLater(fitContent)
+    onTargetHeightChanged: Qt.callLater(fitContent)
     readonly property color ink: "#eef2f8"
     readonly property color muted: "#8292aa"
     onClosing: function(event) {
@@ -177,6 +186,7 @@ Window {
 
     Flickable {
         id: scroll
+        objectName: "detailsScroll"
         visible: !controller.compact
         anchors.fill: parent
         contentWidth: width

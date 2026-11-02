@@ -133,6 +133,10 @@ deduplication and labels, scoped Claude limits, clamping, reset countdowns,
 independent provider failures, stale-data retention, subprocess startup errors,
 and suppression of raw RPC error messages. Lifecycle tests use a fake app-server
 and an empty credential directory; they never touch your actual accounts.
+Window tests repeatedly expand/collapse both capsule widths and check that details
+fit the content when screen space permits, while capsules return to 44px tall.
+CTest runs these offscreen; `QT_QPA_PLATFORM=wayland ./build/window-tests` also
+checks the same transitions against a real Wayland compositor.
 Demo mode never accesses account credentials and uses a separate settings name.
 To capture a deterministic UI sample:
 
