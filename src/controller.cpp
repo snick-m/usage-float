@@ -77,6 +77,10 @@ Controller::~Controller() {
 }
 
 bool Controller::wayland() const { return QGuiApplication::platformName().startsWith("wayland"); }
+int Controller::availableScreenHeight() const {
+    auto *screen = m_window ? m_window->screen() : QGuiApplication::primaryScreen();
+    return screen ? screen->availableGeometry().height() : 800;
+}
 QVariantMap Controller::decorate(const QVariantMap &input) const {
     auto state = input;
     auto rows = state.value("rows").toList();
@@ -156,6 +160,14 @@ void Controller::setAutoStart(bool enabled) {
 
 void Controller::attachWindow(QWindow *window) {
     m_window = window;
+    connect(window, &QWindow::screenChanged, this, &Controller::screenGeometryChanged);
+    for (auto *screen : QGuiApplication::screens())
+        connect(screen, &QScreen::availableGeometryChanged, this, &Controller::screenGeometryChanged);
+    connect(qGuiApp, &QGuiApplication::screenAdded, this, [this](QScreen *screen) {
+        connect(screen, &QScreen::availableGeometryChanged, this, &Controller::screenGeometryChanged);
+        emit screenGeometryChanged();
+    });
+    emit screenGeometryChanged();
     // Wayland owns positioning. Restore coordinates only on platforms that allow it.
     if (!wayland() && m_settings.contains("position")) {
         const QPoint pos = m_settings.value("position").toPoint();

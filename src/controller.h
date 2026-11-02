@@ -21,6 +21,7 @@ class Controller : public QObject {
     Q_PROPERTY(bool autoStart READ autoStart WRITE setAutoStart NOTIFY preferencesChanged)
     Q_PROPERTY(QString codexPath READ codexPath WRITE setCodexPath NOTIFY preferencesChanged)
     Q_PROPERTY(bool wayland READ wayland CONSTANT)
+    Q_PROPERTY(int availableScreenHeight READ availableScreenHeight NOTIFY screenGeometryChanged)
     Q_PROPERTY(QString notice READ notice NOTIFY noticeChanged)
     Q_PROPERTY(QString statusText READ statusText NOTIFY statesChanged)
 public:
@@ -38,6 +39,7 @@ public:
     bool autoStart() const { return m_settings.value("autoStart", false).toBool(); }
     QString codexPath() const { return m_settings.value("codexPath").toString(); }
     bool wayland() const;
+    int availableScreenHeight() const;
     QString notice() const { return m_notice; }
     QString statusText() const;
     void setCompact(bool value);
@@ -62,6 +64,7 @@ signals:
     void statesChanged();
     void preferencesChanged();
     void noticeChanged();
+    void screenGeometryChanged();
 private:
     void fetchClaude();
     void requestClaude(const QJsonObject &auth);

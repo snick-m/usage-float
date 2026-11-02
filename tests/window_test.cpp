@@ -36,7 +36,7 @@ private slots:
         for (int i = 0; i < 8; ++i) {
             controller.setWide(i % 2);
             controller.setCompact(false);
-            QTRY_COMPARE(window->height(), window->property("targetHeight").toInt());
+            QTRY_COMPARE_WITH_TIMEOUT(window->height(), window->property("targetHeight").toInt(), 3000);
             QVERIFY(window->height() > 280);
             const int content = int(std::ceil(scroll->property("contentHeight").toDouble()));
             const int available = window->property("availableHeight").toInt();

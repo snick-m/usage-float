@@ -19,7 +19,7 @@ Window {
     property bool trayAvailable: false
     readonly property bool compactMode: controller.compact
     readonly property int capsuleWidth: controller.wide ? 536 : 328
-    readonly property int availableHeight: Math.max(44, Screen.desktopAvailableHeight - 80)
+    readonly property int availableHeight: Math.max(44, controller.availableScreenHeight - 80)
     readonly property int targetHeight: compactMode ? 44 : Math.min(availableHeight, Math.ceil(mainContent.implicitHeight + 32))
     function fitContent() {
         height = targetHeight
@@ -31,6 +31,10 @@ Window {
     }
     onCapsuleWidthChanged: if (compactMode) Qt.callLater(fitContent)
     onTargetHeightChanged: Qt.callLater(fitContent)
+    // Wayland configure events can arrive after a view change and restore the
+    // old size. Reapply the content size after that event has settled.
+    onHeightChanged: if (height !== targetHeight) Qt.callLater(fitContent)
+    onWidthChanged: if (compactMode && width !== capsuleWidth) Qt.callLater(fitContent)
     readonly property color ink: "#eef2f8"
     readonly property color muted: "#8292aa"
     onClosing: function(event) {
