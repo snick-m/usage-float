@@ -17,11 +17,11 @@ placement and Always on Top.
 
 ## Build
 
-Requires CMake 3.21+, a C++17 compiler, and **Qt 6.5+** with Core, Gui, Widgets,
+Requires CMake 3.21+, a C++17 compiler, and **Qt 6.8+** with Core, Gui, Widgets,
 Network, Quick, QuickControls2, Svg, and Test. Qt 6.8.3 is used on the development laptop.
 Use a Qt release that supports your target OS.
 
-On a distribution with Qt 6.5+ packages, the development dependencies are typically:
+On a distribution with Qt 6.8+ packages, the development dependencies are typically:
 
 ```sh
 sudo apt install build-essential cmake qt6-base-dev qt6-declarative-dev qt6-wayland qt6-svg-dev \
