@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Usage Float
+Comment=Claude Code and Codex subscription allowances
+Exec=usage-float
+Icon=io.usagefloat.desktop
+Terminal=false
+Categories=Utility;
+StartupNotify=true
+StartupWMClass=io.usagefloat.desktop

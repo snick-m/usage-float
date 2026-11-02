@@ -1,0 +1,135 @@
+#include "controller.h"
+#include <QApplication>
+#include <QCommandLineParser>
+#include <QIcon>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QLocalServer>
+#include <QLocalSocket>
+#include <QLockFile>
+#include <QMenu>
+#include <QPainter>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include <QQuickStyle>
+#include <QQuickWindow>
+#include <QStandardPaths>
+#include <QSystemTrayIcon>
+#include <QDir>
+#include <cstdio>
+
+static QIcon appIcon() {
+    QPixmap image(64, 64); image.fill(Qt::transparent);
+    QPainter painter(&image); painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen); painter.setBrush(QColor("#151b27")); painter.drawRoundedRect(0, 0, 64, 64, 16, 16);
+    painter.setBrush(QColor("#d6ac89")); painter.drawRoundedRect(14, 19, 8, 30, 4, 4);
+    painter.setBrush(QColor("#a7dcca")); painter.drawRoundedRect(28, 11, 8, 38, 4, 4);
+    painter.setBrush(QColor("#90a6de")); painter.drawRoundedRect(42, 27, 8, 22, 4, 4);
+    return QIcon(image);
+}
+
+int main(int argc, char **argv) {
+#ifdef Q_OS_LINUX
+    // Prefer the actual session protocol even on desktops where Qt's default
+    // would choose XWayland. Honor explicit overrides (including headless QA).
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM") && !qEnvironmentVariableIsEmpty("WAYLAND_DISPLAY"))
+        qputenv("QT_QPA_PLATFORM", "wayland");
+#endif
+    QApplication app(argc, argv);
+    app.setOrganizationName("UsageFloat");
+    app.setApplicationName("UsageFloat");
+    app.setApplicationDisplayName("Usage Float");
+    app.setApplicationVersion("0.1.0");
+    app.setDesktopFileName("io.usagefloat.desktop");
+    app.setWindowIcon(appIcon());
+    QQuickStyle::setStyle("Basic");
+    QCommandLineParser parser;
+    parser.setApplicationDescription("A small, local Claude Code and Codex allowance monitor.");
+    parser.addHelpOption(); parser.addVersionOption();
+    parser.addOption({"demo", "Show sample data without reading accounts (separate settings)."});
+    parser.addOption({"check", "Read both providers once, print sanitized usage JSON, and exit."});
+    parser.addOption({"screenshot", "Save a demo window PNG and exit (requires --demo).", "path"});
+    parser.addOption({"compact", "Start in compact mode."});
+    parser.addOption({"wide", "Start as a wide capsule with usage bars."});
+    parser.addOption({"expanded", "Start in expanded mode."});
+    parser.addOption({"settings", "Open the settings panel."});
+    parser.process(app);
+    if (parser.isSet("screenshot") && !parser.isSet("demo")) parser.showHelp(2);
+    const bool demo = parser.isSet("demo");
+    if (demo) app.setApplicationName("UsageFloatDemo");
+    Controller controller(demo);
+    if (parser.isSet("compact")) controller.setCompact(true);
+    if (parser.isSet("wide")) { controller.setCompact(true); controller.setWide(true); }
+    if (parser.isSet("expanded") || parser.isSet("settings")) controller.setCompact(false);
+    if (parser.isSet("check")) {
+        bool done = false;
+        auto finish = [&] {
+            if (done) return;
+            done = true;
+            const auto claude = controller.claude(), codex = controller.codex();
+            const auto out = QJsonDocument(QJsonObject{{"claude", QJsonObject::fromVariantMap(claude)},
+                                                       {"codex", QJsonObject::fromVariantMap(codex)}}).toJson();
+            std::fwrite(out.constData(), 1, size_t(out.size()), stdout);
+            app.exit(claude.value("status") == "ready" && codex.value("status") == "ready" ? 0 : 1);
+        };
+        QObject::connect(&controller, &Controller::statesChanged, &app, [&] {
+            if (!controller.refreshing() && controller.claude().value("status") != "loading"
+                && controller.codex().value("status") != "loading") finish();
+        });
+        QTimer::singleShot(30000, &app, finish);
+        return app.exec();
+    }
+    // A second launch brings the existing widget forward instead of making duplicates.
+    const QString runtime = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    const QString socketPath = (runtime.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::TempLocation) : runtime)
+        + "/usage-float-" + qEnvironmentVariable("USER", qEnvironmentVariable("USERNAME", "desktop")) + (demo ? "-demo" : "");
+    QLockFile lock(socketPath + ".lock");
+    lock.setStaleLockTime(0);
+    if (!lock.tryLock(0)) {
+        QLocalSocket socket; socket.connectToServer(socketPath);
+        if (socket.waitForConnected(2000)) { socket.write("show\n"); socket.waitForBytesWritten(1000); return 0; }
+        std::fprintf(stderr, "Usage Float is already running but could not be contacted.\n");
+        return 1;
+    }
+    QLocalServer::removeServer(socketPath);
+    QLocalServer server; server.setSocketOptions(QLocalServer::UserAccessOption);
+    if (!server.listen(socketPath)) { std::fprintf(stderr, "Could not create local single-instance socket.\n"); return 1; }
+    QObject::connect(&server, &QLocalServer::newConnection, &app, [&] {
+        while (auto *socket = server.nextPendingConnection()) {
+            controller.showWindow(); socket->disconnectFromServer(); socket->deleteLater();
+        }
+    });
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty("controller", &controller);
+    QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app, [] { QCoreApplication::exit(1); }, Qt::QueuedConnection);
+    engine.loadFromModule("UsageFloat", "Main");
+    if (engine.rootObjects().isEmpty()) return 1;
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    if (!window) return 1;
+    controller.attachWindow(window);
+    if (parser.isSet("settings")) window->setProperty("settingsOpen", true);
+    QSystemTrayIcon tray(appIcon());
+    QMenu menu;
+    menu.addAction("Show Usage Float", &controller, &Controller::showWindow);
+    menu.addAction("Refresh usage", &controller, &Controller::refresh);
+    menu.addAction("Toggle compact view", &controller, [&] { controller.setCompact(!controller.compact()); controller.showWindow(); });
+    auto *wideAction = menu.addAction("Wide usage bars");
+    wideAction->setCheckable(true);
+    wideAction->setChecked(controller.wide());
+    QObject::connect(wideAction, &QAction::triggered, &controller, [&](bool checked) { controller.setWide(checked); controller.setCompact(true); });
+    QObject::connect(&controller, &Controller::preferencesChanged, wideAction, [&] { wideAction->setChecked(controller.wide()); });
+    menu.addSeparator(); menu.addAction("Quit", &controller, &Controller::quit);
+    tray.setToolTip("Usage Float · Claude Code + Codex");
+    tray.setContextMenu(&menu);
+    const bool hasTray = QSystemTrayIcon::isSystemTrayAvailable();
+    window->setProperty("trayAvailable", hasTray);
+    app.setQuitOnLastWindowClosed(!hasTray);
+    QObject::connect(&tray, &QSystemTrayIcon::activated, &controller, [&](QSystemTrayIcon::ActivationReason reason) {
+        if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) controller.showWindow();
+    });
+    if (hasTray) tray.show();
+    if (parser.isSet("screenshot")) {
+        QTimer::singleShot(1500, &app, [&] { app.exit(window->grabWindow().save(parser.value("screenshot")) ? 0 : 1); });
+    }
+    return app.exec();
+}
