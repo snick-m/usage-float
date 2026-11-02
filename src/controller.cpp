@@ -47,6 +47,14 @@ Controller::Controller(bool demo, QObject *parent) : QObject(parent), m_demo(dem
     m_claude = initial("Claude Code login");
     m_codex = initial("Codex app-server");
     if (!demo) m_claude.insert("model", claudeModel());
+    // Migrate existing installations to the less frequent hybrid polling default.
+    if (!m_settings.value("hybridRefreshV1", false).toBool()) {
+        m_settings.setValue("intervalMinutes", 15);
+        m_settings.setValue("hybridRefreshV1", true);
+    }
+    m_localPoll.setInterval(5000);
+    connect(&m_localPoll, &QTimer::timeout, this, &Controller::readLocal);
+    if (!demo) m_localPoll.start();
     m_poll.setInterval(intervalMinutes() * 60000);
     connect(&m_poll, &QTimer::timeout, this, &Controller::refresh);
     m_poll.start();
@@ -229,8 +237,43 @@ void Controller::refresh() {
                           QVariantMap{{"label", "Weekly"}, {"percent", 42.0}, {"reset", now + 390000}}}, "Plus");
         return;
     }
+    readLocal();
     if (!m_claudeBusy && QDateTime::currentSecsSinceEpoch() >= m_claudeNextAttempt) fetchClaude();
     if (!m_codexBusy && m_codexProcess.state() == QProcess::NotRunning) fetchCodex();
+}
+
+void Controller::readLocal() {
+    if (m_demo) return;
+    const qint64 now = QDateTime::currentSecsSinceEpoch();
+    bool changed = false;
+    for (const auto &snapshot : m_localUsage.read(now)) {
+        if (snapshot.observed <= 0 || snapshot.observed > now + 5 || now - snapshot.observed > 900) continue;
+        auto &state = snapshot.provider == "claude" ? m_claude : m_codex;
+        auto rows = state.value("rows").toList();
+        bool accepted = false;
+        for (const auto &value : snapshot.rows) {
+            const auto row = value.toMap();
+            const QString id = row.value("id").toString();
+            const QString key = snapshot.provider + ":" + id;
+            if (row.value("reset").toLongLong() <= now || snapshot.observed <= m_rowObserved.value(key)) continue;
+            bool replaced = false;
+            for (auto &existing : rows) {
+                if (existing.toMap().value("id").toString() == id) { existing = row; replaced = true; break; }
+            }
+            if (!replaced) rows.append(row);
+            m_rowObserved.insert(key, snapshot.observed);
+            accepted = true;
+        }
+        if (!accepted) continue;
+        state.insert("rows", rows);
+        state.insert("source", snapshot.source);
+        if (!snapshot.plan.isEmpty()) state.insert("plan", snapshot.plan);
+        state.insert("updated", qMax(state.value("updated").toLongLong(), snapshot.observed));
+        state.insert("status", "ready");
+        state.insert("message", "");
+        changed = true;
+    }
+    if (changed) emit statesChanged();
 }
 
 void Controller::success(const QString &provider, const QVariantList &rows, const QString &plan) {
@@ -238,7 +281,11 @@ void Controller::success(const QString &provider, const QVariantList &rows, cons
     auto &state = provider == "claude" ? m_claude : m_codex;
     state.insert("rows", rows); state.insert("plan", plan);
     state.insert("status", "ready"); state.insert("message", ""); state.insert("busy", false);
-    state.insert("updated", QDateTime::currentSecsSinceEpoch());
+    const qint64 now = QDateTime::currentSecsSinceEpoch();
+    state.insert("updated", now);
+    state.insert("source", provider == "claude" ? "Claude usage endpoint" : "Codex app-server");
+    for (const auto &value : rows)
+        m_rowObserved.insert(provider + ":" + value.toMap().value("id").toString(), now);
     if (provider == "claude") { m_claudeBusy = false; m_claudeFailures = 0; }
     else { m_codexBusy = false; m_codexDeadline.stop(); }
     emit statesChanged();

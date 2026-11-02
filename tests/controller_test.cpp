@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QTimeZone>
 #include <iostream>
 
 // The test executable doubles as a Codex protocol fixture. No real CLI or
@@ -38,6 +39,7 @@ private slots:
     void initTestCase() {
         QVERIFY(data.isValid());
         qputenv("CLAUDE_CONFIG_DIR", data.path().toUtf8());
+        qputenv("CODEX_HOME", data.path().toUtf8());
         // An explicit empty credential document also prevents macOS from
         // falling back to the real user Keychain while tests are running.
         QFile credentials(data.path() + "/.credentials.json");
@@ -50,8 +52,54 @@ private slots:
         QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, data.path());
     }
     void init() {
+        QFile::remove(data.path() + "/usage-float.json");
+        QDir(data.path() + "/sessions").removeRecursively();
         QSettings().clear();
         qunsetenv("USAGE_FLOAT_TEST_CASE");
+    }
+    void hybridDefaultMigratesExistingInterval() {
+        QSettings().setValue("intervalMinutes", 3);
+        Controller controller(true);
+        QCOMPARE(controller.intervalMinutes(), 15);
+        controller.setIntervalMinutes(20);
+        Controller next(true);
+        QCOMPARE(next.intervalMinutes(), 20);
+    }
+    void localUpdateAfterPollAndOlderDataCannotRegress() {
+        Controller controller(false);
+        controller.setCodexPath(QCoreApplication::applicationFilePath());
+        QTRY_COMPARE_WITH_TIMEOUT(controller.codex().value("status").toString(), "ready", 4000);
+        qputenv("USAGE_FLOAT_TEST_CASE", "rpc-error"); // Local checks must not poll.
+        QTest::qWait(1100); // Local sample must be newer than the completed poll.
+        const qint64 now = QDateTime::currentSecsSinceEpoch();
+        QDir().mkpath(data.path() + "/sessions");
+        QFile session(data.path() + "/sessions/test.jsonl");
+        QVERIFY(session.open(QIODevice::WriteOnly));
+        const QJsonObject event{{"timestamp", QDateTime::fromSecsSinceEpoch(now, QTimeZone::UTC).toString(Qt::ISODateWithMs)},
+            {"type", "event_msg"}, {"payload", QJsonObject{{"type", "token_count"}, {"rate_limits", QJsonObject{
+                {"limit_id", "codex"}, {"primary", QJsonObject{{"used_percent", 27}, {"window_minutes", 300}, {"resets_at", now + 3600}}}}}}}};
+        session.write(QJsonDocument(event).toJson(QJsonDocument::Compact) + '\n'); session.close();
+        // A separate reader validates the real local fixture without waiting
+        // for the controller's minute-long file discovery interval.
+        LocalUsage reader;
+        QCOMPARE(reader.read(now).first().rows.first().toMap().value("percent").toInt(), 27);
+        QFile claude(data.path() + "/usage-float.json");
+        QVERIFY(claude.open(QIODevice::WriteOnly));
+        claude.write(QJsonDocument(QJsonObject{{"observed_at", now}, {"rate_limits", QJsonObject{
+            {"five_hour", QJsonObject{{"used_percentage", 38}, {"resets_at", now + 3600}}}}}}).toJson());
+        claude.close();
+        QTRY_COMPARE_WITH_TIMEOUT(controller.claude().value("status").toString(), "ready", 6000);
+        QCOMPARE(controller.claude().value("rows").toList().first().toMap().value("percent").toInt(), 38);
+        QCOMPARE(controller.claude().value("source").toString(), "Claude Code local status line");
+        const auto observed = controller.claude().value("updated");
+        QVERIFY(claude.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        claude.write(QJsonDocument(QJsonObject{{"observed_at", now - 30}, {"rate_limits", QJsonObject{
+            {"five_hour", QJsonObject{{"used_percentage", 5}, {"resets_at", now + 3600}}}}}}).toJson());
+        claude.close();
+        QTest::qWait(5100);
+        QCOMPARE(controller.codex().value("status").toString(), "ready");
+        QCOMPARE(controller.claude().value("updated"), observed);
+        QCOMPARE(controller.claude().value("rows").toList().first().toMap().value("percent").toInt(), 38);
     }
     void independentProvidersAndStaleReading() {
         Controller controller(false);

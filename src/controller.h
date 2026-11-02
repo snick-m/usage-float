@@ -1,4 +1,5 @@
 #pragma once
+#include "localusage.h"
 #include <QObject>
 #include <QNetworkAccessManager>
 #include <QProcess>
@@ -37,7 +38,7 @@ public:
     bool borderless() const { return m_settings.value("borderless", true).toBool(); }
     bool pinned() const { return m_settings.value("pinned", true).toBool(); }
     double panelOpacity() const { return m_settings.value("opacity", 1.0).toDouble(); }
-    int intervalMinutes() const { return m_settings.value("intervalMinutes", 3).toInt(); }
+    int intervalMinutes() const { return m_settings.value("intervalMinutes", 15).toInt(); }
     bool autoStart() const { return m_settings.value("autoStart", false).toBool(); }
     QString codexPath() const { return m_settings.value("codexPath").toString(); }
     bool wayland() const;
@@ -69,6 +70,7 @@ signals:
     void noticeChanged();
     void screenGeometryChanged();
 private:
+    void readLocal();
     void fetchClaude();
     void requestClaude(const QJsonObject &auth);
     void fetchCodex();
@@ -80,7 +82,9 @@ private:
     QVariantMap decorate(const QVariantMap &state) const;
     QSettings m_settings;
     QNetworkAccessManager m_network;
-    QTimer m_poll, m_clock, m_codexDeadline;
+    QTimer m_poll, m_clock, m_codexDeadline, m_localPoll;
+    LocalUsage m_localUsage;
+    QHash<QString, qint64> m_rowObserved;
     QProcess m_codexProcess;
     QVariantMap m_claude, m_codex;
     QWindow *m_window = nullptr;

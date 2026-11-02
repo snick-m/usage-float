@@ -27,7 +27,8 @@ You still need your existing Claude Code and/or Codex CLI login.
 - Session and weekly usage, countdowns, and additional model-specific limits.
 - Configured default model underneath each provider name (`Auto` when unset).
 - Compact two-provider view, expanded detail cards, and borderless capsule by default.
-- Independent asynchronous refreshes, timeouts, Claude cooldown/backoff, and
+- Local allowance updates plus 15-minute provider polling, independent asynchronous
+  refreshes, timeouts, Claude cooldown/backoff, and
   clearly marked stale readings when a provider fails.
 - Tray menu (when your desktop provides a tray), single-instance activation,
   configurable polling/background opacity, and optional startup at login.
@@ -164,6 +165,50 @@ connection disappears. Closing the floating window keeps monitoring in the panel
 
 ## How accounts work
 
+### Hybrid refresh
+
+Usage Float checks local allowance data every five seconds and polls both
+providers every **15 minutes**, including when local data is available. Existing
+installations switch to 15 minutes once on upgrade; you can change the interval
+in Settings afterward. Startup and manual refresh also poll, subject to Claude's
+cooldown. Local reads never trigger a provider request.
+
+- **Codex:** automatically reads allowance snapshots from recent
+  `$CODEX_HOME/sessions/**/*.jsonl` files (default `~/.codex/sessions`). These are
+  server-reported percentages and reset times, not estimates from token counts.
+  New session files are discovered within a minute; existing files are read
+  incrementally with bounded reads. No setup is required.
+- **Claude Code:** enable the local status-line bridge with Python 3:
+
+  ```sh
+  python3 scripts/claude-statusline.py --install
+  ```
+
+  For an installed package, the script is `share/usage-float/claude-statusline.py`.
+  Restart Claude Code sessions after installing. The bridge preserves an existing
+  status-line command and its display settings, backs up settings before changing
+  them, and exports only allowance data to
+  `$CLAUDE_CONFIG_DIR/usage-float.json` (default `~/.claude/usage-float.json`). It
+  makes no network calls. Claude Code must supply the `rate_limits` status-line
+  fields; otherwise polling continues to provide readings. Status-line redraws
+  with no new response do not refresh the observation timestamp.
+
+Only local observations from the last 15 minutes are accepted. Newer observations
+replace matching allowance windows; older local records cannot overwrite newer
+poll results. Missing and expired local windows never become zero usage. Other
+provider windows from the last poll remain visible. Local snapshots may lag
+activity on other devices until the CLI receives another response; scheduled
+polling fills that gap. Local log formats can change, so polling remains the
+fallback when no usable local data is present.
+
+To undo the Claude bridge, restore the `statusLine` entry from
+`usage-float-statusline-previous.json` in the Claude config folder (or remove the
+entry if that file is `{}`). The bridge keeps a small response marker per session
+under `usage-float-statusline-state/` to distinguish redraws across active
+sessions. Those files and `usage-float.json` can be deleted after disabling it.
+
+### Provider polling and accounts
+
 **Claude Code:** reads `~/.claude/.credentials.json` on each refresh, or
 `$CLAUDE_CONFIG_DIR/.credentials.json` when configured. On macOS, it also tries
 Claude Code's `Claude Code-credentials` Keychain entry. The access token is sent
@@ -181,8 +226,9 @@ Windows Claude installations inside WSL require running the widget in that Linux
 environment; the Windows build does not automatically import WSL credentials.
 
 Settings are stored via QSettings in your OS's standard per-user location
-(`~/.config/UsageFloat/UsageFloat.conf` on Linux). No usage history is uploaded
-or persisted. Background refresh defaults to every three minutes. A failed
+(`~/.config/UsageFloat/UsageFloat.conf` on Linux). No usage history is uploaded. The optional Claude bridge persists its latest
+allowance snapshot and response markers locally; session logs belong to Codex.
+Background provider polling defaults to every 15 minutes. A failed
 request keeps the last reading and marks it stale; missing limits never become
 zero usage. Claude rate-limit responses respect cooldowns, including manual
 refresh clicks. Reading percentages does not guarantee the provider will accept
@@ -193,7 +239,9 @@ a new task, and reset times remain estimates supplied by that provider.
 Tests cover missing/null allowances versus genuine zero usage, Codex bucket
 deduplication and labels, scoped Claude limits, clamping, reset countdowns,
 independent provider failures, stale-data retention, subprocess startup errors,
-and suppression of raw RPC error messages. Lifecycle tests use a fake app-server
+and suppression of raw RPC error messages. Hybrid tests cover partial local log
+records, multiple Codex buckets, missing/expired windows, timestamp ordering,
+interval migration, and Claude bridge installation/redraw behavior. Lifecycle tests use a fake app-server
 and an empty credential directory; they never touch your actual accounts.
 Window tests repeatedly expand/collapse both capsule widths and check that details
 fit the content when screen space permits, while capsules return to 44px tall.
@@ -216,15 +264,15 @@ workflow artifacts. A matching `vX.Y.Z` tag additionally publishes a GitHub Rele
 with `.tar.gz`, `.zip`, `.dmg`, and SHA-256 files after every matrix job passes.
 The workflow rejects tags that do not match the project version plus the optional
 `USAGE_FLOAT_PRERELEASE` suffix in `CMakeLists.txt`. Tags such as
-`v0.2.0-rc.1` publish a GitHub prerelease and do not replace the latest stable release.
+`v0.2.0-rc.2` publish a GitHub prerelease and do not replace the latest stable release.
 
 To cut a release, update the project version, `USAGE_FLOAT_PRERELEASE` (empty for
 stable releases), and `packaging/RELEASE_NOTES.md`,
 commit, push, and verify the branch workflow. Then tag that exact commit:
 
 ```sh
-git tag -a v0.2.0-rc.1 -m "Usage Float v0.2.0-rc.1"
-git push origin v0.2.0-rc.1
+git tag -a v0.2.0-rc.2 -m "Usage Float v0.2.0-rc.2"
+git push origin v0.2.0-rc.2
 ```
 
 `scripts/package.py` creates the same download archives locally from a CMake

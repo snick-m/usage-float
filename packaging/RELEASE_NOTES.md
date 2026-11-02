@@ -1,14 +1,18 @@
-Usage Float v0.2.0-rc.1 is a release candidate for the native GNOME/Dash to Panel usage graph.
+Usage Float v0.2.0-rc.2 adds hybrid local usage updates and less frequent provider polling.
 
 ### New in this release candidate
 
-- Four native taskbar bars show Claude and Codex session/weekly allowances.
-- Used/remaining display, warning colors, missing-data markers, and stale-reading indicators.
-- Exact percentages and reset countdowns in the panel popup, plus refresh and widget controls.
-- Optional panel installer: run `share/usage-float/install-panel.sh --enable` from the Linux package. Log out and back in when prompted, then launch Usage Float.
-- The taskbar widget replaces the duplicate tray icon while connected and shares the app's readings without extra account requests.
+- Codex allowance percentages and reset times update automatically from local session logs, without extra provider requests.
+- Claude Code can export allowance snapshots locally through the optional status-line bridge. With Python 3 installed, run `python3 share/usage-float/claude-statusline.py --install` from an extracted package, then restart Claude Code terminal sessions. Existing status-line commands and display settings are preserved.
+- Local data is checked every five seconds; newly created Codex session files are discovered within a minute.
+- Background provider polling defaults to 15 minutes. Existing installations switch once on upgrade; the interval remains configurable in Settings.
+- Newer local allowance windows replace older readings. Older local records, missing percentages, and expired windows cannot overwrite fresh data or appear as zero usage.
+- Claude cooldowns remain respected by both automatic and manual refreshes. Polling continues when local data is unavailable.
+- Tests cover incremental and partial Codex logs, multiple allowance buckets, timestamp ordering, interval migration, and Claude bridge setup/redraw behavior.
 
-The panel extension targets GNOME 45–50. Graph rendering and D-Bus lifecycle are tested locally; this RC is intended for desktop integration feedback across supported GNOME versions. Windows and macOS retain the floating widget and tray/menu-bar behavior.
+The Claude bridge requires Claude Code to provide rate-limit fields to its status line; headless integrations that do not run a status line continue to use polling. Local readings can lag usage on other devices until another CLI response arrives. Both local log formats and the Claude usage endpoint may change.
+
+The native GNOME/Dash to Panel graph from RC 1 remains included. The extension targets GNOME 45–50; Windows and macOS retain the floating widget and tray/menu-bar behavior.
 
 ### Included features
 
