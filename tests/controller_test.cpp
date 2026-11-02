@@ -72,6 +72,20 @@ private slots:
         QCOMPARE(controller.codex().value("status").toString(), "ready");
         QVERIFY(!controller.refreshing());
     }
+    void remainingModePreservesUsedAndUnknownData() {
+        Controller controller(true);
+        // Switching units does not turn an unavailable reading into 100% left.
+        controller.setShowRemaining(true);
+        QVERIFY(controller.claude().value("rows").toList().isEmpty());
+        QTRY_COMPARE(controller.claude().value("status").toString(), "ready");
+        auto row = controller.claude().value("rows").toList().first().toMap();
+        QCOMPARE(row.value("percent").toDouble(), 32.0);
+        QCOMPARE(row.value("displayPercent").toDouble(), 68.0);
+        QCOMPARE(controller.codex().value("rows").toList().first().toMap().value("displayPercent").toDouble(), 84.0);
+        controller.setShowRemaining(false);
+        row = controller.claude().value("rows").toList().first().toMap();
+        QCOMPARE(row.value("displayPercent").toDouble(), 32.0);
+    }
 };
 
 int main(int argc, char **argv) {

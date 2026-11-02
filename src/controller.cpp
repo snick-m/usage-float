@@ -86,6 +86,7 @@ QVariantMap Controller::decorate(const QVariantMap &input) const {
     auto rows = state.value("rows").toList();
     for (auto &value : rows) {
         auto row = value.toMap();
+        row.insert("displayPercent", showRemaining() ? 100.0 - row.value("percent").toDouble() : row.value("percent").toDouble());
         const qint64 reset = row.value("reset").toLongLong();
         row.insert("countdown", resetText(reset));
         row.insert("resetDate", reset > 0 ? QDateTime::fromSecsSinceEpoch(reset).toLocalTime().toString("ddd, MMM d · h:mm AP") : "");
@@ -106,12 +107,17 @@ QString Controller::statusText() const {
     if (m_demo) return "Demo data · no accounts accessed";
     if (refreshing()) return "Syncing your allowances…";
     if (m_claude.value("status") == "error" || m_codex.value("status") == "error") return "Some data needs attention";
-    return "Live allowances · every " + QString::number(intervalMinutes()) + " min";
+    return QString(showRemaining() ? "Remaining allowance · every " : "Used allowance · every ") + QString::number(intervalMinutes()) + " min";
 }
 QString Controller::resetText(qint64 seconds) const { return Usage::countdown(seconds, QDateTime::currentSecsSinceEpoch()); }
 
 void Controller::setCompact(bool v) { m_settings.setValue("compact", v); emit preferencesChanged(); }
 void Controller::setWide(bool v) { m_settings.setValue("wide", v); emit preferencesChanged(); }
+void Controller::setShowRemaining(bool v) {
+    m_settings.setValue("showRemaining", v);
+    emit preferencesChanged();
+    emit statesChanged();
+}
 void Controller::setBorderless(bool v) { m_settings.setValue("borderless", v); emit preferencesChanged(); }
 void Controller::setPinned(bool v) { m_settings.setValue("pinned", v); emit preferencesChanged(); }
 void Controller::setPanelOpacity(double v) { m_settings.setValue("opacity", qBound(0.45, v, 1.0)); emit preferencesChanged(); }

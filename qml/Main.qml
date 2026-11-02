@@ -102,7 +102,7 @@ Window {
                                     required property var modelData
                                     spacing: 3
                                     Text { text: modelData.label === "Session" ? "S" : modelData.label === "Weekly" ? "W" : modelData.label.charAt(0); color: root.muted; font.pixelSize: 10 }
-                                    Text { text: Math.round(modelData.percent) + "%"; color: modelData.percent >= 90 ? "#ef8f93" : root.ink; font.pixelSize: 11; font.weight: Font.DemiBold }
+                                    Text { text: Math.round(modelData.displayPercent) + "%"; color: modelData.percent >= 90 ? "#ef8f93" : root.ink; font.pixelSize: 11; font.weight: Font.DemiBold }
                                 }
                             }
                             Text { visible: capsuleProvider.rows.length === 0; text: capsuleProvider.modelData.state.busy ? "Syncing…" : "Unavailable"; color: root.muted; font.pixelSize: 10 }
@@ -127,13 +127,13 @@ Window {
                                 RowLayout {
                                     Layout.fillWidth: true; spacing: 4
                                     Text { text: modelData.label; color: root.muted; font.pixelSize: 9; Layout.fillWidth: true; elide: Text.ElideRight }
-                                    Text { text: Math.round(modelData.percent) + "%"; color: root.ink; font.pixelSize: 10; font.weight: Font.DemiBold }
+                                    Text { text: Math.round(modelData.displayPercent) + "%"; color: root.ink; font.pixelSize: 10; font.weight: Font.DemiBold }
                                 }
                                 Rectangle {
                                     Layout.fillWidth: true
                                     implicitHeight: 4; radius: 2; color: "#293345"
                                     Rectangle {
-                                        height: parent.height; width: parent.width * modelData.percent / 100; radius: 2
+                                        height: parent.height; width: parent.width * modelData.displayPercent / 100; radius: 2
                                         color: modelData.percent >= 90 ? "#ef8f93" : modelData.percent >= 75 ? "#e6c17e" : capsuleProvider.modelData.accent
                                         Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
                                     }
@@ -149,7 +149,7 @@ Window {
                         text: {
                             let lines = [capsuleProvider.modelData.name]
                             for (let row of capsuleProvider.rows.slice(0, 2))
-                                lines.push(row.label + ": " + Math.round(row.percent) + "% · resets in " + row.countdown)
+                                lines.push(row.label + ": " + Math.round(row.displayPercent) + (controller.showRemaining ? "% remaining" : "% used") + " · resets in " + row.countdown)
                             if (capsuleProvider.modelData.state.stale) lines.push("Stale reading — open details")
                             else if (capsuleProvider.modelData.state.status === "error") lines.push(capsuleProvider.modelData.state.message)
                             return lines.join("\n")
@@ -175,6 +175,11 @@ Window {
                 text: "Wide usage bars"
                 checkable: true; checked: controller.wide
                 onTriggered: controller.wide = checked
+            }
+            MenuItem {
+                text: "Show remaining instead of used"
+                checkable: true; checked: controller.showRemaining
+                onTriggered: controller.showRemaining = checked
             }
             MenuItem { text: "Refresh usage"; onTriggered: controller.refresh() }
             MenuItem { text: "Settings"; onTriggered: { controller.compact = false; root.settingsOpen = true } }
@@ -230,6 +235,11 @@ Window {
                     anchors { left: parent.left; right: parent.right; top: parent.top; margins: 13 }
                     spacing: 10
                     Text { text: "Make it yours"; color: root.ink; font.pixelSize: 13; font.weight: Font.DemiBold }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Text { text: "Show remaining allowance"; color: "#bcc6d7"; font.pixelSize: 11; Layout.fillWidth: true }
+                        Switch { checked: controller.showRemaining; onToggled: controller.showRemaining = checked; implicitHeight: 28 }
+                    }
                     RowLayout {
                         Layout.fillWidth: true
                         Text { text: "Start at login"; color: "#bcc6d7"; font.pixelSize: 11; Layout.fillWidth: true }

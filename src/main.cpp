@@ -118,6 +118,11 @@ int main(int argc, char **argv) {
     wideAction->setChecked(controller.wide());
     QObject::connect(wideAction, &QAction::triggered, &controller, [&](bool checked) { controller.setWide(checked); controller.setCompact(true); });
     QObject::connect(&controller, &Controller::preferencesChanged, wideAction, [&] { wideAction->setChecked(controller.wide()); });
+    auto *remainingAction = menu.addAction("Show remaining instead of used");
+    remainingAction->setCheckable(true);
+    remainingAction->setChecked(controller.showRemaining());
+    QObject::connect(remainingAction, &QAction::triggered, &controller, &Controller::setShowRemaining);
+    QObject::connect(&controller, &Controller::preferencesChanged, remainingAction, [&] { remainingAction->setChecked(controller.showRemaining()); });
     menu.addSeparator(); menu.addAction("Quit", &controller, &Controller::quit);
     tray.setToolTip("Usage Float · Claude Code + Codex");
     tray.setContextMenu(&menu);

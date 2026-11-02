@@ -100,6 +100,11 @@ The capsule’s **⋯ → Wide usage bars** switch adds session and weekly progr
 for each provider while keeping the same thin, borderless capsule. The preference
 is remembered; Ctrl+W toggles it too. `--wide` starts directly in this view.
 
+Use **⋯ → Show remaining instead of used** (also in Settings and the tray menu)
+to switch all percentages and bar lengths between used and remaining allowance.
+The preference is remembered. Warning colors always reflect usage nearing the
+limit, so a low remaining balance can still show a red bar.
+
 ## How accounts work
 
 **Claude Code:** reads `~/.claude/.credentials.json` on each refresh, or

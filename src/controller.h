@@ -14,6 +14,7 @@ class Controller : public QObject {
     Q_PROPERTY(bool refreshing READ refreshing NOTIFY statesChanged)
     Q_PROPERTY(bool compact READ compact WRITE setCompact NOTIFY preferencesChanged)
     Q_PROPERTY(bool wide READ wide WRITE setWide NOTIFY preferencesChanged)
+    Q_PROPERTY(bool showRemaining READ showRemaining WRITE setShowRemaining NOTIFY preferencesChanged)
     Q_PROPERTY(bool borderless READ borderless WRITE setBorderless NOTIFY preferencesChanged)
     Q_PROPERTY(bool pinned READ pinned WRITE setPinned NOTIFY preferencesChanged)
     Q_PROPERTY(double panelOpacity READ panelOpacity WRITE setPanelOpacity NOTIFY preferencesChanged)
@@ -32,6 +33,7 @@ public:
     bool refreshing() const { return m_claudeBusy || m_codexBusy; }
     bool compact() const { return m_settings.value("compact", true).toBool(); }
     bool wide() const { return m_settings.value("wide", false).toBool(); }
+    bool showRemaining() const { return m_settings.value("showRemaining", false).toBool(); }
     bool borderless() const { return m_settings.value("borderless", true).toBool(); }
     bool pinned() const { return m_settings.value("pinned", true).toBool(); }
     double panelOpacity() const { return m_settings.value("opacity", 1.0).toDouble(); }
@@ -44,6 +46,7 @@ public:
     QString statusText() const;
     void setCompact(bool value);
     void setWide(bool value);
+    void setShowRemaining(bool value);
     void setBorderless(bool value);
     void setPinned(bool value);
     void setPanelOpacity(double value);
