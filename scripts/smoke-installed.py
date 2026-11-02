@@ -16,11 +16,21 @@ env = os.environ.copy()
 env['PATH'] = os.pathsep.join(p for p in env.get('PATH', '').split(os.pathsep) if sdk not in p.lower())
 env['QT_QPA_PLATFORM'] = 'offscreen'
 env['QT_QUICK_BACKEND'] = 'software'
+env['QT_FORCE_STDERR_LOGGING'] = '1'
+env['QT_LOGGING_TO_CONSOLE'] = '1'
 if os.name == 'nt':
+    import ctypes
+    # A loader failure should fail CI, not open a blocking native error dialog.
+    ctypes.windll.kernel32.SetErrorMode(0x0001 | 0x0002 | 0x8000)
+    env['QT_QPA_PLATFORM'] = 'windows'
     exe = prefix / 'bin/usage-float.exe'
+    for name in ['vcruntime140.dll', 'msvcp140.dll']:
+        if not (prefix / 'bin' / name).exists():
+            raise SystemExit(f'Windows C++ runtime missing: {name}')
     env['QT_PLUGIN_PATH'] = str(prefix / 'plugins')
     env['QML_IMPORT_PATH'] = str(prefix / 'qml')
 elif (prefix / 'usage-float.app').exists():
+    env['QT_QPA_PLATFORM'] = 'cocoa'
     exe = prefix / 'usage-float.app/Contents/MacOS/usage-float'
     if not (prefix / 'usage-float.app/Contents/Resources/UsageFloat.icns').exists():
         raise SystemExit('macOS bundle icon missing')

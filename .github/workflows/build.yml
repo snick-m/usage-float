@@ -21,18 +21,22 @@ jobs:
             qt-host: linux
             qt-arch: linux_gcc_64
             package: linux-x86_64
+            archives: qtbase qtdeclarative qtsvg qttools qtwayland icu
           - os: windows-2022
             qt-host: windows
             qt-arch: win64_msvc2022_64
             package: windows-x86_64
+            archives: qtbase qtdeclarative qtsvg qttools
           - os: macos-14
             qt-host: mac
             qt-arch: clang_64
             package: macos-arm64
+            archives: qtbase qtdeclarative qtsvg qttools
           - os: macos-15-intel
             qt-host: mac
             qt-arch: clang_64
             package: macos-x86_64
+            archives: qtbase qtdeclarative qtsvg qttools
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -62,12 +66,12 @@ jobs:
         id: qt-cache
         with:
           path: qt-sdk
-          key: qt-6.8.3-${{ runner.os }}-${{ runner.arch }}-${{ matrix.qt-arch }}-v1
+          key: qt-6.8.3-${{ runner.os }}-${{ runner.arch }}-${{ matrix.qt-arch }}-minimal-v2
       - name: Install Qt SDK
         if: steps.qt-cache.outputs.cache-hit != 'true'
         run: |
           python -m pip install aqtinstall==3.3.0
-          python -m aqt install-qt ${{ matrix.qt-host }} desktop 6.8.3 ${{ matrix.qt-arch }} --outputdir qt-sdk
+          python -m aqt install-qt ${{ matrix.qt-host }} desktop 6.8.3 ${{ matrix.qt-arch }} --outputdir qt-sdk --archives ${{ matrix.archives }}
       - name: Locate SDK and absolute install prefix
         shell: python
         run: |
