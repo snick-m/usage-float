@@ -12,7 +12,7 @@ endif()
 qt_add_executable(usage-float src/main.cpp src/controller.cpp src/controller.h src/usage.cpp src/usage.h)
 qt_add_qml_module(usage-float
     URI UsageFloat VERSION 1.0
-    QML_FILES qml/Main.qml qml/ProviderCard.qml qml/Meter.qml qml/IconButton.qml
+    QML_FILES qml/Main.qml qml/ProviderCard.qml qml/Meter.qml qml/IconButton.qml qml/UsageToolTip.qml
 )
 target_link_libraries(usage-float PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Network Qt6::Widgets Qt6::Svg)
 if(UNIX AND NOT APPLE)

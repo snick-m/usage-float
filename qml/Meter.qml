@@ -26,8 +26,10 @@ ColumnLayout {
             color: meter.meterColor
             Behavior on width { NumberAnimation { duration: 450; easing.type: Easing.OutCubic } }
         }
-        ToolTip.visible: hover.hovered
-        ToolTip.text: meter.reading.resetDate || "Reset time unavailable"
+        UsageToolTip {
+            visible: hover.hovered
+            text: meter.reading.resetDate || "Reset time unavailable"
+        }
         HoverHandler { id: hover }
     }
     Text {

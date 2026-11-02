@@ -130,14 +130,17 @@ Window {
                         Text { visible: capsuleProvider.rows.length === 0; text: capsuleProvider.modelData.state.busy ? "Syncing…" : "Unavailable"; color: root.muted; font.pixelSize: 10; Layout.fillWidth: true }
                         Text { visible: capsuleProvider.modelData.state.stale; text: "!"; color: "#e6bd8f"; font.pixelSize: 10 }
                     }
-                    ToolTip.visible: providerHover.hovered
-                    ToolTip.text: {
-                        let lines = [capsuleProvider.modelData.name]
-                        for (let row of capsuleProvider.rows.slice(0, 2))
-                            lines.push(row.label + ": " + Math.round(row.percent) + "% · resets in " + row.countdown)
-                        if (capsuleProvider.modelData.state.stale) lines.push("Stale reading — open details")
-                        else if (capsuleProvider.modelData.state.status === "error") lines.push(capsuleProvider.modelData.state.message)
-                        return lines.join("\n")
+                    UsageToolTip {
+                        objectName: "providerToolTip"
+                        visible: providerHover.hovered
+                        text: {
+                            let lines = [capsuleProvider.modelData.name]
+                            for (let row of capsuleProvider.rows.slice(0, 2))
+                                lines.push(row.label + ": " + Math.round(row.percent) + "% · resets in " + row.countdown)
+                            if (capsuleProvider.modelData.state.stale) lines.push("Stale reading — open details")
+                            else if (capsuleProvider.modelData.state.status === "error") lines.push(capsuleProvider.modelData.state.message)
+                            return lines.join("\n")
+                        }
                     }
                     HoverHandler { id: providerHover }
                 }
