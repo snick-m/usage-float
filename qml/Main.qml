@@ -72,17 +72,19 @@ Window {
             anchors { fill: parent; leftMargin: 17; rightMargin: 9; topMargin: 6; bottomMargin: 6 }
             spacing: 12
             Repeater {
-                model: [{name: "Claude", state: controller.claude, accent: "#d6ac89"},
-                        {name: "Codex", state: controller.codex, accent: "#a7dcca"}]
+                // Keep delegates alive when readings change so an open tooltip stays open.
+                model: [{name: "Claude", accent: "#d6ac89"},
+                        {name: "Codex", accent: "#a7dcca"}]
                 RowLayout {
                     id: capsuleProvider
                     required property var modelData
-                    readonly property var rows: modelData.state.rows || []
+                    readonly property var providerState: modelData.name === "Claude" ? controller.claude : controller.codex
+                    readonly property var rows: providerState.rows || []
                     Layout.fillWidth: true
                     spacing: 7
                     Rectangle {
                         implicitWidth: 4; implicitHeight: 19; radius: 2
-                        color: capsuleProvider.modelData.state.stale || capsuleProvider.modelData.state.status === "error"
+                        color: capsuleProvider.providerState.stale || capsuleProvider.providerState.status === "error"
                             ? "#e6bd8f" : capsuleProvider.modelData.accent
                     }
                     ColumnLayout {
@@ -94,21 +96,22 @@ Window {
                             ColumnLayout {
                                 spacing: 0
                                 Text { text: capsuleProvider.modelData.name; color: capsuleProvider.modelData.accent; font.pixelSize: 10; font.weight: Font.Medium }
-                                Text { text: capsuleProvider.modelData.state.model; color: root.muted; font.pixelSize: 8; Layout.maximumWidth: 82; elide: Text.ElideRight }
+                                Text { text: capsuleProvider.providerState.model; color: root.muted; font.pixelSize: 8; Layout.maximumWidth: 82; elide: Text.ElideRight }
                             }
                             ColumnLayout {
                                 Layout.fillWidth: true; spacing: 0
                             Repeater {
-                                model: capsuleProvider.rows.slice(0, 2)
+                                model: Math.min(2, capsuleProvider.rows.length)
                                 Row {
-                                    required property var modelData
+                                    required property int index
+                                    readonly property var modelData: capsuleProvider.rows[index] || {}
                                     spacing: 3
                                     Text { text: modelData.label === "Session" ? "S" : modelData.label === "Weekly" ? "W" : modelData.label.charAt(0); color: root.muted; font.pixelSize: 10 }
                                     Text { text: Math.round(modelData.displayPercent) + "%"; color: modelData.percent >= 90 ? "#ef8f93" : root.ink; font.pixelSize: 11; font.weight: Font.DemiBold }
                                 }
                             }
-                            Text { visible: capsuleProvider.rows.length === 0; text: capsuleProvider.modelData.state.busy ? "Syncing…" : "Unavailable"; color: root.muted; font.pixelSize: 10 }
-                            Text { visible: capsuleProvider.modelData.state.stale; text: "!"; color: "#e6bd8f"; font.pixelSize: 10 }
+                            Text { visible: capsuleProvider.rows.length === 0; text: capsuleProvider.providerState.busy ? "Syncing…" : "Unavailable"; color: root.muted; font.pixelSize: 10 }
+                            Text { visible: capsuleProvider.providerState.stale; text: "!"; color: "#e6bd8f"; font.pixelSize: 10 }
                             }
                         }
                     }
@@ -119,12 +122,13 @@ Window {
                         ColumnLayout {
                             spacing: 1
                             Text { text: capsuleProvider.modelData.name; color: capsuleProvider.modelData.accent; font.pixelSize: 11; font.weight: Font.Medium }
-                            Text { text: capsuleProvider.modelData.state.model; color: root.muted; font.pixelSize: 8; Layout.maximumWidth: 78; elide: Text.ElideRight }
+                            Text { text: capsuleProvider.providerState.model; color: root.muted; font.pixelSize: 8; Layout.maximumWidth: 78; elide: Text.ElideRight }
                         }
                         Repeater {
-                            model: capsuleProvider.rows.slice(0, 2)
+                            model: Math.min(2, capsuleProvider.rows.length)
                             ColumnLayout {
-                                required property var modelData
+                                required property int index
+                                readonly property var modelData: capsuleProvider.rows[index] || {}
                                 Layout.fillWidth: true
                                 spacing: 4
                                 RowLayout {
@@ -136,6 +140,7 @@ Window {
                                     Layout.fillWidth: true
                                     implicitHeight: 4; radius: 2; color: "#293345"
                                     Rectangle {
+                                        objectName: capsuleProvider.modelData.name + "UsageFill" + index
                                         height: parent.height; width: parent.width * modelData.displayPercent / 100; radius: 2
                                         color: modelData.percent >= 90 ? "#ef8f93" : modelData.percent >= 75 ? "#e6c17e" : capsuleProvider.modelData.accent
                                         Behavior on width { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
@@ -143,19 +148,19 @@ Window {
                                 }
                             }
                         }
-                        Text { visible: capsuleProvider.rows.length === 0; text: capsuleProvider.modelData.state.busy ? "Syncing…" : "Unavailable"; color: root.muted; font.pixelSize: 10; Layout.fillWidth: true }
-                        Text { visible: capsuleProvider.modelData.state.stale; text: "!"; color: "#e6bd8f"; font.pixelSize: 10 }
+                        Text { visible: capsuleProvider.rows.length === 0; text: capsuleProvider.providerState.busy ? "Syncing…" : "Unavailable"; color: root.muted; font.pixelSize: 10; Layout.fillWidth: true }
+                        Text { visible: capsuleProvider.providerState.stale; text: "!"; color: "#e6bd8f"; font.pixelSize: 10 }
                     }
                     UsageToolTip {
                         objectName: "providerToolTip"
                         visible: providerHover.hovered
                         text: {
                             let lines = [capsuleProvider.modelData.name]
-                            lines.push("Default model: " + capsuleProvider.modelData.state.model)
+                            lines.push("Default model: " + capsuleProvider.providerState.model)
                             for (let row of capsuleProvider.rows.slice(0, 2))
                                 lines.push(row.label + ": " + Math.round(row.displayPercent) + (controller.showRemaining ? "% remaining" : "% used") + " · resets in " + row.countdown)
-                            if (capsuleProvider.modelData.state.stale) lines.push("Stale reading — open details")
-                            else if (capsuleProvider.modelData.state.status === "error") lines.push(capsuleProvider.modelData.state.message)
+                            if (capsuleProvider.providerState.stale) lines.push("Stale reading — open details")
+                            else if (capsuleProvider.providerState.status === "error") lines.push(capsuleProvider.providerState.message)
                             return lines.join("\n")
                         }
                     }

@@ -17,4 +17,6 @@ data.showRemaining = true;
 data.claude = {...state, rows: state.rows.map(row => ({...row, displayPercent: 100 - row.percent}))};
 assert(panelText(data).includes('S 68% W 42%'), 'Remaining values');
 assert(detailLines(data)[0] === 'Remaining allowance', 'Remaining label');
+data.version = '0.2.0-rc.2';
+assert(detailLines(data).includes('Usage Float v0.2.0-rc.2'), 'App version including prerelease');
 print('Panel formatting passed');

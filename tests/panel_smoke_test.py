@@ -43,6 +43,9 @@ with tempfile.TemporaryDirectory(prefix='usage-float-panel-test-') as temporary:
                 raise RuntimeError('Panel service did not become ready')
             time.sleep(0.05)
         assert data['claude']['rows'][0]['displayPercent'] == 32
+        version = subprocess.run([str(Path(sys.argv[1]).resolve()), '--version'], env=env,
+                                 text=True, capture_output=True, check=True, timeout=5)
+        assert data['version'] == version.stdout.strip().split()[-1]
         monitor = subprocess.Popen([
             'gdbus', 'monitor', '--session', '--dest', 'io.usagefloat.UsageFloat.Panel.Demo',
             '--object-path', '/io/usagefloat/UsageFloat/Panel',

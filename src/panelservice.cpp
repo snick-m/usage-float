@@ -1,4 +1,5 @@
 #include "panelservice.h"
+#include <QCoreApplication>
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QJsonDocument>
@@ -31,6 +32,7 @@ bool PanelService::start(bool demo) {
 
 QString PanelService::GetSnapshot() const {
     return QString::fromUtf8(QJsonDocument(QJsonObject{
+        {"version", QCoreApplication::applicationVersion()},
         {"claude", QJsonObject::fromVariantMap(m_controller->claude())},
         {"codex", QJsonObject::fromVariantMap(m_controller->codex())},
         {"showRemaining", m_controller->showRemaining()},

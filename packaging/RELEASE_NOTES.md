@@ -1,18 +1,17 @@
-Usage Float v0.2.0-rc.2 adds hybrid local usage updates and less frequent provider polling.
+Usage Float v0.2.0-rc.3 fixes refresh animations and tooltip flashing, and adds version details.
 
 ### New in this release candidate
 
-- Codex allowance percentages and reset times update automatically from local session logs, without extra provider requests.
-- Claude Code can export allowance snapshots locally through the optional status-line bridge. With Python 3 installed, run `python3 share/usage-float/claude-statusline.py --install` from an extracted package, then restart Claude Code terminal sessions. Existing status-line commands and display settings are preserved.
-- Local data is checked every five seconds; newly created Codex session files are discovered within a minute.
-- Background provider polling defaults to 15 minutes. Existing installations switch once on upgrade; the interval remains configurable in Settings.
-- Newer local allowance windows replace older readings. Older local records, missing percentages, and expired windows cannot overwrite fresh data or appear as zero usage.
-- Claude cooldowns remain respected by both automatic and manual refreshes. Polling continues when local data is unavailable.
-- Tests cover incremental and partial Codex logs, multiple allowance buckets, timestamp ordering, interval migration, and Claude bridge setup/redraw behavior.
+- Usage bars keep their existing values during refreshes. Unchanged readings no longer flash an animation from zero; changed readings animate from the current value in both the wide capsule and expanded details.
+- Provider hover areas survive usage updates, keeping open tooltips stable.
+- Tooltip windows pass pointer input through, preventing flashing when a tooltip overlaps the cursor.
+- The app version, including its release candidate suffix, appears in the tray menu and tooltip and the GNOME panel details.
+- Dash to Panel is optional. The live panel graph requires the Usage Float GNOME extension and also works with GNOME's stock top panel; the regular tray icon is static.
+- Regression checks cover bar identity across updates, unchanged-reading animations, tooltip input handling, and version details.
 
-The Claude bridge requires Claude Code to provide rate-limit fields to its status line; headless integrations that do not run a status line continue to use polling. Local readings can lag usage on other devices until another CLI response arrives. Both local log formats and the Claude usage endpoint may change.
+The hybrid local usage updates and 15-minute provider polling introduced in RC 2 remain included. The optional Claude status-line bridge requires Python 3 and Claude Code rate-limit fields. Local readings can lag usage on other devices until another CLI response arrives.
 
-The native GNOME/Dash to Panel graph from RC 1 remains included. The extension targets GNOME 45–50; Windows and macOS retain the floating widget and tray/menu-bar behavior.
+The GNOME extension targets GNOME 45–50. Updating an already loaded extension requires logging out and back in to load its new code. The app fixes take effect after restarting Usage Float.
 
 ### Included features
 
@@ -26,7 +25,7 @@ The native GNOME/Dash to Panel graph from RC 1 remains included. The extension t
 
 - **Linux x86_64:** extract the `.tar.gz`, run `./UsageFloat`, or run `./install.sh` to add an Applications launcher. Built on Ubuntu 24.04; requires a compatible glibc desktop and graphics libraries. Qt and native Wayland plugins are bundled.
 - **Windows x86_64:** extract the entire `.zip` and run `bin/usage-float.exe`. Keep the other files beside it.
-- **macOS:** choose the Apple Silicon (`arm64`) or Intel (`x86_64`) `.dmg`, open it, and drag **Usage Float.app** into Applications.
+- **macOS:** download the Apple Silicon (`arm64`) `.dmg`, open it, and drag **Usage Float.app** into Applications.
 
 Builds are not commercially code-signed or Apple-notarized. Platform launch warnings may require explicitly allowing the app.
 

@@ -159,10 +159,16 @@ also brings the floating widget back. This is a GNOME top-panel extension;
 KDE panels and the Ubuntu application dock are separate desktop integrations.
 
 **Dash to Panel:** when it replaces the stock top panel, this live bar graph
-appear directly in its taskbar using native GNOME Shell widgets. No tray icon
+appears directly in its taskbar using native GNOME Shell widgets. No tray icon
 or Dash to Panel patch is required. The app automatically hides its duplicate
 tray icon while the native panel widget is connected and restores it if that
 connection disappears. Closing the floating window keeps monitoring in the panel.
+
+Dash to Panel is optional: with the Usage Float extension enabled, the graph
+also appears in GNOME's stock top panel. Without the Usage Float extension,
+the app provides a static tray icon and menu where the desktop supports them;
+the tray icon does not display a live graph. The app version appears in the
+panel details and the regular tray menu and tooltip.
 
 ## How accounts work
 
@@ -265,15 +271,15 @@ workflow artifacts. A matching `vX.Y.Z` tag additionally publishes a GitHub Rele
 with `.tar.gz`, `.zip`, `.dmg`, and SHA-256 files after every matrix job passes.
 The workflow rejects tags that do not match the project version plus the optional
 `USAGE_FLOAT_PRERELEASE` suffix in `CMakeLists.txt`. Tags such as
-`v0.2.0-rc.2` publish a GitHub prerelease and do not replace the latest stable release.
+`v0.2.0-rc.3` publish a GitHub prerelease and do not replace the latest stable release.
 
 To cut a release, update the project version, `USAGE_FLOAT_PRERELEASE` (empty for
 stable releases), and `packaging/RELEASE_NOTES.md`,
 commit, push, and verify the branch workflow. Then tag that exact commit:
 
 ```sh
-git tag -a v0.2.0-rc.2 -m "Usage Float v0.2.0-rc.2"
-git push origin v0.2.0-rc.2
+git tag -a v0.2.0-rc.3 -m "Usage Float v0.2.0-rc.3"
+git push origin v0.2.0-rc.3
 ```
 
 `scripts/package.py` creates the same download archives locally from a CMake

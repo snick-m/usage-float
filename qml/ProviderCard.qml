@@ -48,8 +48,13 @@ Rectangle {
             }
         }
         Repeater {
-            model: card.rows.length > 2 && !card.expanded ? card.rows.slice(0, 2) : card.rows
-            Meter { required property var modelData; reading: modelData; accent: card.accent }
+            model: card.expanded ? card.rows.length : Math.min(2, card.rows.length)
+            Meter {
+                required property int index
+                objectName: card.provider + "UsageMeter" + index
+                reading: card.rows[index] || {}
+                accent: card.accent
+            }
         }
         Text {
             visible: card.state.status === "error" || !card.state.hasData

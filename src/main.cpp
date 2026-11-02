@@ -114,6 +114,9 @@ int main(int argc, char **argv) {
     if (parser.isSet("settings")) window->setProperty("settingsOpen", true);
     QSystemTrayIcon tray(appIcon());
     QMenu menu;
+    const QString appDetails = QStringLiteral("Usage Float v%1").arg(app.applicationVersion());
+    menu.addAction(appDetails)->setEnabled(false);
+    menu.addSeparator();
     menu.addAction("Show Usage Float", &controller, &Controller::showWindow);
     menu.addAction("Refresh usage", &controller, &Controller::refresh);
     menu.addAction("Toggle compact view", &controller, [&] { controller.setCompact(!controller.compact()); controller.showWindow(); });
@@ -128,7 +131,7 @@ int main(int argc, char **argv) {
     QObject::connect(remainingAction, &QAction::triggered, &controller, &Controller::setShowRemaining);
     QObject::connect(&controller, &Controller::preferencesChanged, remainingAction, [&] { remainingAction->setChecked(controller.showRemaining()); });
     menu.addSeparator(); menu.addAction("Quit", &controller, &Controller::quit);
-    tray.setToolTip("Usage Float · Claude Code + Codex");
+    tray.setToolTip(appDetails + QStringLiteral(" · Claude Code + Codex"));
     tray.setContextMenu(&menu);
     const bool hasTray = QSystemTrayIcon::isSystemTrayAvailable();
     window->setProperty("trayAvailable", hasTray);

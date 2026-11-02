@@ -12,6 +12,14 @@ ToolTip {
     width: Math.min(300, implicitWidth)
     font.pixelSize: 11
     contentItem: Text {
+        // Popup.Window creates a native surface. Ignoring hover on the Text
+        // alone does not stop that surface stealing the provider's hover when
+        // the compositor places the tooltip under the pointer.
+        Window.onWindowChanged: {
+            const popupWindow = Window.window
+            if (popupWindow && popupWindow !== tip.parent.Window.window)
+                popupWindow.flags |= Qt.WindowTransparentForInput | Qt.WindowDoesNotAcceptFocus
+        }
         text: tip.text
         font: tip.font
         color: "#dbe5f3"

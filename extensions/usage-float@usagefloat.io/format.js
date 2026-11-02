@@ -21,5 +21,6 @@ export function detailLines(data) {
         if (state.status === 'error') lines.push(state.message || 'Usage unavailable');
         else if (!(state.rows ?? []).length) lines.push(state.busy ? 'Syncing…' : 'Usage unavailable');
     }
+    if (data.version) lines.push(`Usage Float v${data.version}`);
     return lines;
 }
