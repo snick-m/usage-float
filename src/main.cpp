@@ -1,4 +1,7 @@
 #include "controller.h"
+#ifdef Q_OS_LINUX
+#include "panelservice.h"
+#endif
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QIcon>
@@ -35,7 +38,7 @@ int main(int argc, char **argv) {
     app.setOrganizationName("UsageFloat");
     app.setApplicationName("UsageFloat");
     app.setApplicationDisplayName("Usage Float");
-    app.setApplicationVersion("0.1.0");
+    app.setApplicationVersion(USAGE_FLOAT_VERSION);
     app.setDesktopFileName("io.usagefloat.UsageFloat");
     app.setWindowIcon(appIcon());
     QQuickStyle::setStyle("Basic");
@@ -103,6 +106,11 @@ int main(int argc, char **argv) {
     auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
     if (!window) return 1;
     controller.attachWindow(window);
+#ifdef Q_OS_LINUX
+    PanelService panel(&controller);
+    if (!panel.start(demo))
+        std::fprintf(stderr, "Panel integration unavailable (session D-Bus connection failed).\n");
+#endif
     if (parser.isSet("settings")) window->setProperty("settingsOpen", true);
     QSystemTrayIcon tray(appIcon());
     QMenu menu;
@@ -129,6 +137,15 @@ int main(int argc, char **argv) {
         if (reason == QSystemTrayIcon::Trigger || reason == QSystemTrayIcon::DoubleClick) controller.showWindow();
     });
     if (hasTray) tray.show();
+#ifdef Q_OS_LINUX
+    QObject::connect(&panel, &PanelService::panelActiveChanged, &app, [&](bool active) {
+        // The native taskbar widget replaces the duplicate tray icon while connected.
+        tray.setVisible(hasTray && !active);
+        window->setProperty("trayAvailable", hasTray || active);
+        app.setQuitOnLastWindowClosed(!(hasTray || active));
+        if (!active && !hasTray) controller.showWindow();
+    });
+#endif
     if (parser.isSet("screenshot")) {
         QTimer::singleShot(1500, &app, [&] { app.exit(window->grabWindow().save(parser.value("screenshot")) ? 0 : 1); });
     }

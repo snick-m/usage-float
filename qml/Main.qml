@@ -282,7 +282,7 @@ Window {
                     }
                     RowLayout {
                         Layout.fillWidth: true
-                        Text { text: "v0.1 · C++ / Qt Quick"; color: root.muted; font.pixelSize: 9; Layout.fillWidth: true }
+                        Text { text: "v" + Qt.application.version + " · C++ / Qt Quick"; color: root.muted; font.pixelSize: 9; Layout.fillWidth: true }
                         Button { text: "Quit"; onClicked: controller.quit(); implicitHeight: 28; palette.button: "#354258"; palette.buttonText: root.ink }
                     }
                 }

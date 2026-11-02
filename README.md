@@ -37,6 +37,7 @@ You still need your existing Claude Code and/or Codex CLI login.
 
 Requires CMake 3.21+, a C++17 compiler, and **Qt 6.8+** with Core, Gui, Widgets,
 Network, Quick, QuickControls2, Svg, and Test. Qt 6.8.3 is used on the development laptop.
+Linux builds also require Qt DBus and WaylandClient.
 Use a Qt release that supports your target OS.
 
 On a distribution with Qt 6.8+ packages, the development dependencies are typically:
@@ -124,6 +125,43 @@ to switch all percentages and bar lengths between used and remaining allowance.
 The preference is remembered. Warning colors always reflect usage nearing the
 limit, so a low remaining balance can still show a red bar.
 
+## Optional GNOME panel indicator
+
+On GNOME 45–50 (including Ubuntu), you can put a live usage bar graph in the
+panel. Four vertical bars show Claude session/weekly on the left (amber) and
+Codex session/weekly on the right (mint). Bars fill from bottom to top and
+turn amber/red as used allowance approaches the limit. Install the app normally, then run:
+
+```sh
+./scripts/install-panel.sh --enable
+# Log out and back in if prompted, so GNOME discovers the new extension.
+```
+
+For a downloaded Linux package, the installer is
+`share/usage-float/install-panel.sh` inside the extracted package.
+Launch Usage Float, then select **Hide floating widget** in the panel menu
+to use just the panel. The menu also provides all quota windows and reset
+countdowns, refresh, a used/remaining switch, and **Open Usage Float**.
+Exact percentages and reset times are in the popup. The used/remaining switch
+also changes the bar heights, while warning colors always reflect used allowance.
+Enable **Start at login** in the app if desired. Stale or failed readings are
+dimmed with warning dots; missing data shows crossed tracks, distinct from zero.
+If the app stops, the
+indicator shows offline and its Open action starts the installed app.
+
+The extension shares the app's existing readings over the local session D-Bus;
+it never reads credentials, polls providers, or writes usage to disk. Demo mode
+uses a separate service and does not replace the live panel readings.
+Disable it with `gnome-extensions disable usage-float@usagefloat.io`; disabling
+also brings the floating widget back. This is a GNOME top-panel extension;
+KDE panels and the Ubuntu application dock are separate desktop integrations.
+
+**Dash to Panel:** when it replaces the stock top panel, this live bar graph
+appear directly in its taskbar using native GNOME Shell widgets. No tray icon
+or Dash to Panel patch is required. The app automatically hides its duplicate
+tray icon while the native panel widget is connected and restores it if that
+connection disappears. Closing the floating window keeps monitoring in the panel.
+
 ## How accounts work
 
 **Claude Code:** reads `~/.claude/.credentials.json` on each refresh, or
@@ -176,14 +214,17 @@ changes only; it does not keep a continuous animation running while idle.
 Pushes and pull requests build all four desktop packages and upload archives as
 workflow artifacts. A matching `vX.Y.Z` tag additionally publishes a GitHub Release
 with `.tar.gz`, `.zip`, `.dmg`, and SHA-256 files after every matrix job passes.
-The workflow rejects tags that do not match the version in `CMakeLists.txt`.
+The workflow rejects tags that do not match the project version plus the optional
+`USAGE_FLOAT_PRERELEASE` suffix in `CMakeLists.txt`. Tags such as
+`v0.2.0-rc.1` publish a GitHub prerelease and do not replace the latest stable release.
 
-To cut a release, update the project version and `packaging/RELEASE_NOTES.md`,
+To cut a release, update the project version, `USAGE_FLOAT_PRERELEASE` (empty for
+stable releases), and `packaging/RELEASE_NOTES.md`,
 commit, push, and verify the branch workflow. Then tag that exact commit:
 
 ```sh
-git tag -a v0.1.0 -m "Usage Float v0.1.0"
-git push origin v0.1.0
+git tag -a v0.2.0-rc.1 -m "Usage Float v0.2.0-rc.1"
+git push origin v0.2.0-rc.1
 ```
 
 `scripts/package.py` creates the same download archives locally from a CMake

@@ -48,7 +48,13 @@ jobs:
         shell: python
         run: |
           import os, pathlib, re
-          project = re.search(r'project\(UsageFloat VERSION ([0-9.]+)', pathlib.Path('CMakeLists.txt').read_text())[1]
+          cmake = pathlib.Path('CMakeLists.txt').read_text()
+          project = re.search(r'project\(UsageFloat VERSION ([0-9.]+)', cmake)[1]
+          prerelease = re.search(r'set\(USAGE_FLOAT_PRERELEASE "([^"]*)"\)', cmake)
+          if prerelease and prerelease[1]:
+              if not re.fullmatch(r'(alpha|beta|rc)\.[1-9][0-9]*', prerelease[1]):
+                  raise SystemExit('Invalid prerelease suffix in CMakeLists.txt')
+              project += '-' + prerelease[1]
           if os.environ['GITHUB_REF_TYPE'] == 'tag':
               version = os.environ['GITHUB_REF_NAME']
               if version != 'v' + project:
@@ -61,7 +67,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl-dev libopengl-dev libegl-dev libxkbcommon-dev libwayland-dev libxcb-cursor0
+          sudo apt-get install -y libgl-dev libopengl-dev libegl-dev libxkbcommon-dev libwayland-dev libxcb-cursor0 gjs dbus-daemon libglib2.0-bin
       - uses: actions/cache@v4
         id: qt-cache
         with:
@@ -123,9 +129,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            release_flags=(--prerelease --latest=false)
+          else
+            release_flags=(--prerelease=false --latest)
+          fi
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" release-assets/* --clobber
           else
-            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --draft --title "Usage Float $RELEASE_TAG" --notes-file packaging/RELEASE_NOTES.md
+            gh release create "$RELEASE_TAG" release-assets/* --verify-tag --draft --title "Usage Float $RELEASE_TAG" --notes-file packaging/RELEASE_NOTES.md "${release_flags[@]}"
           fi
-          gh release edit "$RELEASE_TAG" --draft=false --latest
+          gh release edit "$RELEASE_TAG" --draft=false "${release_flags[@]}"

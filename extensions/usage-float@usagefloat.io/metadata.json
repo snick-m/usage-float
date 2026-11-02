@@ -1,0 +1,8 @@
+{
+  "uuid": "usage-float@usagefloat.io",
+  "name": "Usage Float",
+  "description": "Live Claude Code and Codex usage bar graphs in your taskbar, backed by Usage Float.",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "version": 2,
+  "url": "https://github.com/snick-m/usage-float"
+}

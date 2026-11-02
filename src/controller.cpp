@@ -75,7 +75,7 @@ Controller::Controller(bool demo, QObject *parent) : QObject(parent), m_demo(dem
         });
     connect(&m_codexProcess, &QProcess::started, this, [this] {
         sendRpc({{"id", 1}, {"method", "initialize"}, {"params", QJsonObject{
-            {"clientInfo", QJsonObject{{"name", "usage_float"}, {"title", "Usage Float"}, {"version", "0.1.0"}}}}}});
+            {"clientInfo", QJsonObject{{"name", "usage_float"}, {"title", "Usage Float"}, {"version", QCoreApplication::applicationVersion()}}}}}});
     });
     QTimer::singleShot(0, this, &Controller::refresh);
 }
@@ -294,7 +294,7 @@ void Controller::requestClaude(const QJsonObject &auth) {
     request.setRawHeader("Authorization", "Bearer " + token.toUtf8());
     request.setRawHeader("anthropic-beta", "oauth-2025-04-20");
     request.setRawHeader("Accept", "application/json");
-    request.setRawHeader("User-Agent", "usage-float/0.1.0");
+    request.setRawHeader("User-Agent", "usage-float/" + QCoreApplication::applicationVersion().toUtf8());
     auto *reply = m_network.get(request);
     reply->setReadBufferSize(1024 * 1024);
     connect(reply, &QNetworkReply::finished, this, [this, reply, plan = auth.value("subscriptionType").toString()] {
